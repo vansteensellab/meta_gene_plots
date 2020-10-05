@@ -1,0 +1,332 @@
+---
+title: "Meta plots of tracks for Supercoiling"
+author: "Christ Leemans"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+output:
+    html_document:
+        theme: journal #cerulean
+        highlight: monochrome
+        toc: true
+        toc_float: true
+        code_folding: show
+    pdf_document:
+        fig_width: 8
+        fig_height: 5
+editor_options:
+    chunk_output_type: console
+---
+# knitr document van Steensel lab
+
+## generated on {date}
+
+In this report I would like to make some nice meta plots for Stephano.
+He has discovered regions with opposing effects of TOP1 and DRB treatments.
+For these regions I ran a pipeline binning and averaging pA-DamID data and
+supercoiling information from the Gilbert lab.
+
+
+
+### plots around boundaries.
+
+I took the start and end boundaries of the previously identified regions and
+transformed it into a bed file with the start and end boundaries encoded with
+opposing orientation.
+
+Using deeptools this will result in a big data matrix with signal for both
+boundaries aligned in such a way that the outside of the boundary will
+be located downstream of the center while the inside of the boundary will
+be located upstream of the boundary.
+
+This way the data can nicely be loaded into R and averaged by replicates.
+
+```{r}
+library(data.table)
+library(stringr)
+library(scales)
+library(ggplot2)
+
+file_list = list.files('results_supercoiling/window_runmean',
+                       pattern='center.*-550000-550000-5000',
+                       full.names=T)
+meta.dt = data.table(str_match(file_list, '.*/(.*)_center-(.*)_(.*?)-.*'))
+
+colnames(meta.dt) = c('file', 'region', 'name', 'target')
+
+meta.dt[,rep:=gsub('.*_(.*)', '\\1', name)]
+meta.dt[,condition:=gsub('(.*)_.*', '\\1', name)]
+meta.dt[,condition:=gsub('_1[0-9]+_', '_', condition)]
+meta.dt[,condition:=gsub('_GFP_', '_', condition)]
+
+meta.dt[name=='RPE1', c('rep', 'target', 'name', 'condition') :=
+                      list(gsub('replicate', 'r', target),
+                           'supercoiling', 'supercoiling',
+                           'WT')]
+
+meta.dt[, random:=F]
+meta.dt[grep('_random', region), c('region', 'random') :=
+                                list(gsub('_random', '', region), T)]
+
+
+
+setkey(meta.dt, 'file')
+binned.dt = meta.dt[condition%in%c('WT', 'RPE_CT', 'RPE_DRB', 'RPE_SC',
+                                   'RPE_Top1'),
+                    fread(file, stringsAsFactors=F, header=T), by=file]
+
+binned_meta = merge(binned.dt, meta.dt)
+setkey(binned_meta, 'transcript_ID')
+
+
+pos_columns = colnames(binned.dt[, -c('file', 'transcript_ID')])
+
+up_down = binned_meta[target=='supercoiling',
+                       list(left = mean(unlist(.SD[, 1:(ncol(.SD)/2)]), na.rm=T),
+                            right = mean(unlist(.SD[, -(1:(ncol(.SD)/2))]), na.rm=T)),
+                       by=c('transcript_ID', 'region', 'random'),
+                       .SDcols=pos_columns]
+
+binned_updown = merge(binned_meta, up_down, by=c('region', 'random', 'transcript_ID'))
+
+
+
+flip <- function(dt, left, right){
+    if (left > right){
+        return(dt)
+    } else {
+        invers = dt[,ncol(dt):1]
+        colnames(invers) = colnames(dt)
+        return(invers)
+    }
+}
+
+flipped.dt = binned_updown[, flip(.SD, left, right),
+                           by=c('file', 'transcript_ID'), .SDcols=pos_columns]
+
+file_mean = flipped.dt[, list(pos = as.numeric(colnames(.SD)),
+                              log2_mean = colMeans(log2(.SD))), by='file',
+                              .SDcols=-'transcript_ID']
+
+file_mean_merge = merge(file_mean, meta.dt, by='file')
+
+
+mean_rep.dt = file_mean_merge[, list(log2_mean=mean(log2_mean)),
+                               by=c('region', 'target', 'condition', 'random',
+                                    'pos') ]
+
+mean_rep.dt[,random:=ifelse(random==T, 'Randomized Regions', 'Actual Regions')]
+
+setkeyv(mean_rep.dt, c('region', 'target', 'random'))
+
+
+plot_list = apply(unique(mean_rep.dt[,c('region', 'target', 'random')]),
+                  1, function(x){
+                      dt = mean_rep.dt[as.list(x), ]
+                      ggplot(dt, aes(x=pos, y=log2_mean, color=condition)) +
+                          geom_line() +
+                          ggtitle(paste(x, collapse=' :: ')) +
+                          theme_bw() +
+                          scale_x_continuous(lim=c(-500000, 500000), name="Position",
+                                             labels = scales::comma)
+                  })
+pdf('cl20200615_center_profiles.pdf', useDingbats=F)
+for (plot in plot_list){
+    print(plot)
+}
+dev.off()
+
+setkeyv(mean_rep.dt, c('region', 'target'))
+
+plot_list = apply(unique(mean_rep.dt[target=='supercoiling',c('region', 'target')]),
+                  1, function(x){
+                      dt = mean_rep.dt[as.list(x), ]
+                      ggplot(dt, aes(x=pos, y=log2_mean, color=random)) +
+                          geom_line() +
+                          ggtitle(paste(x, collapse=' :: ')) +
+                          theme_bw() +
+                          scale_x_continuous(lim=c(-500000, 500000), name="Position",
+                                             labels = scales::comma)
+                  })
+pdf('cl20200615_center_profiles_supercoiling only.pdf', useDingbats=F)
+for (plot in plot_list){
+    print(plot)
+}
+dev.off()
+
+
+plot_list = apply(unique(mean_rep.dt[,c('region', 'target')]),
+                  1, function(x){
+                      dt = mean_rep.dt[as.list(x), ]
+                      ggplot(dt, aes(x=pos, y=log2_mean, color=condition,
+                                     linetype=random)) +
+                          geom_line() +
+                          ggtitle(paste(x, collapse=' :: ')) +
+                          theme_bw() +
+                          scale_x_continuous(lim=c(-500000, 500000), name="Position",
+                                             labels = scales::comma)
+                  })
+pdf('cl20200615_center_profiles_random_same_plot.pdf', useDingbats=F)
+for (plot in plot_list){
+    print(plot)
+}
+dev.off()
+```
+
+
+```{r}
+
+file_list = list.files('results_supercoiling/scaled_runmean',
+                       full.names=T)
+meta.dt = data.table(str_match(file_list, '.*/(.*?)-(.*)_(.*?)[.].*'))
+
+colnames(meta.dt) = c('file', 'region', 'name', 'target')
+
+meta.dt[,rep:=gsub('.*_(.*)', '\\1', name)]
+meta.dt[,condition:=gsub('(.*)_.*', '\\1', name)]
+meta.dt[,condition:=gsub('_1[0-9]+_', '_', condition)]
+meta.dt[,condition:=gsub('_GFP_', '_', condition)]
+
+meta.dt[name=='RPE1', c('rep', 'target', 'name', 'condition') :=
+                      list(gsub('replicate', 'r', target),
+                           'supercoiling', 'supercoiling',
+                           'WT')]
+
+meta.dt[, random:=F]
+meta.dt[grep('_random', region), c('region', 'random') :=
+                                 list(gsub('_random', '', region), T)]
+
+
+setkey(meta.dt, 'file')
+binned.dt = meta.dt[condition%in%c('WT', 'RPE_CT', 'RPE_DRB', 'RPE_SC',
+                                   'RPE_Top1'),
+                    fread(file, stringsAsFactors=F, header=T), by=file]
+
+file_mean = binned.dt[, list(pos = factor(colnames(.SD), levels=colnames(.SD)),
+                             log2_mean = colMeans(log2(.SD))), by='file',
+                      .SDcols=-'transcript_ID']
+
+file_mean_merge = merge(file_mean, meta.dt, by='file')
+
+mean_rep.dt = file_mean_merge[random==F, list(log2_mean=mean(log2_mean)),
+                               by=c('region', 'target', 'condition', 'pos')]
+
+setkeyv(mean_rep.dt, c('region', 'target'))
+
+pos_levels = mean_rep.dt[,levels(pos)]
+
+xlim = c(which(pos_levels=='TSS-500000'), which(pos_levels=='TES+500000'))
+
+break_vec = c(which(pos_levels=='TSS-500000'),
+              which(pos_levels=='TSS-250000'),
+              which(pos_levels=='TSS+0'),
+              which(pos_levels=='MID+0'),
+              which(pos_levels=='MID+500000'),
+              which(pos_levels=='TES-500000'),
+              which(pos_levels=='TES+0'),
+              which(pos_levels=='TES+250000'),
+              which(pos_levels=='TES+500000'))
+
+break_names = c('-500kb', '-250kb', 'Edge', 'Edge+250kb', 'scaled-center',
+                'Edge-250kb', 'Edge', '+250kb', '+500kb')
+plot_list = apply(unique(mean_rep.dt[,c('region', 'target')]),
+                  1, function(x){
+                      dt = mean_rep.dt[as.list(x), ]
+                      ggplot(dt, aes(x=as.numeric(pos), y=log2_mean, color=condition)) +
+                          geom_line() +
+                          ggtitle(paste(x, collapse=' :: ')) +
+                          theme_bw() +
+                          scale_x_continuous(breaks=break_vec, lim=xlim,
+                                             labels=break_names)
+                  })
+pdf('cl20200609_region_profiles.pdf', useDingbats=F, width=20)
+for (plot in plot_list){
+    print(plot)
+}
+dev.off()
+```
+
+
+
+```{r}
+mid_columns = grep('MID', colnames(binned.dt), value=T)
+
+do_mean <- function(x){
+    return(mean(x))
+}
+
+setkey(binned.dt, 'transcript_ID')
+
+binned_meta = merge(binned.dt, meta.dt)
+
+up_down = binned_meta[target=='supercoiling',
+                       list(left = mean(unlist(.SD[, 1:(ncol(.SD)/2)]), na.rm=T),
+                            right = mean(unlist(.SD[, -(1:(ncol(.SD)/2))]), na.rm=T)),
+                       by=c('transcript_ID', 'region', 'random'),
+                       .SDcols=mid_columns]
+
+binned_updown = merge(binned_meta, up_down, by=c('region', 'random', 'transcript_ID'))
+
+pos_columns = colnames(binned.dt[, -c('file', 'transcript_ID')])
+
+
+flip <- function(dt, left, right){
+    if (left > right){
+        return(dt)
+    } else {
+        invers = dt[,ncol(dt):1]
+        colnames(invers) = colnames(dt)
+        return(invers)
+    }
+}
+
+flipped.dt = binned_updown[, flip(.SD, left, right),
+                           by=c('file', 'transcript_ID'), .SDcols=pos_columns]
+
+file_mean = flipped.dt[, list(pos = factor(colnames(.SD), levels=colnames(.SD)),
+                              log2_mean = colMeans(log2(.SD))), by='file',
+                              .SDcols=-'transcript_ID']
+
+file_mean_merge = merge(file_mean, meta.dt, by='file')
+
+mean_rep.dt = file_mean_merge[, list(log2_mean=mean(log2_mean)),
+                              by=c('region', 'target', 'condition', 'random', 'pos')]
+
+setkeyv(mean_rep.dt, c('region', 'target', 'random'))
+
+pos_levels = mean_rep.dt[,levels(pos)]
+
+xlim = c(which(pos_levels=='TSS-500000'), which(pos_levels=='TES+500000'))
+
+break_vec = c(which(pos_levels=='TSS-500000'),
+             which(pos_levels=='TSS-250000'),
+             which(pos_levels=='TSS+0'),
+             which(pos_levels=='MID+0'),
+             which(pos_levels=='MID+500000'),
+             which(pos_levels=='TES-500000'),
+             which(pos_levels=='TES+0'),
+             which(pos_levels=='TES+250000'),
+             which(pos_levels=='TES+500000'))
+
+break_names = c('-500kb', '-250kb', 'Edge', 'Edge+250kb', 'scaled-center',
+               'Edge-250kb', 'Edge', '+250kb', '+500kb')
+plot_list = apply(unique(mean_rep.dt[,c('region', 'target', 'random')]),
+                 1, function(x){
+                     x_list = as.list(x)
+                     x_list$random = ifelse(x_list[['random']]=='FALSE', F, T)
+                     dt = mean_rep.dt[x_list, ]
+                     title = paste(x[names(x_list)!='random'], collapse=' :: ')
+                     if (x_list$random==T){
+                         title = paste('Randomly drawn based on', title)
+                     }
+                     ggplot(dt, aes(x=as.numeric(pos), y=log2_mean, color=condition)) +
+                         geom_line() +
+                         ggtitle(title) +
+                         theme_bw() +
+                         scale_x_continuous(breaks=break_vec, lim=xlim,
+                                            labels=break_names)
+                 })
+pdf('cl20200609_region_profiles_flipped_SuperCoil.pdf', useDingbats=F, width=20)
+for (plot in plot_list){
+   print(plot)
+}
+dev.off()
+```

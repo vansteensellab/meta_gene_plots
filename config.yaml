@@ -1,0 +1,154 @@
+outdir: '/DATA/usr/c.leemans/projects/meta_gene_plots/results'
+
+transcripts:
+    gencode.v27: /DATA/usr/c.leemans/data/tracks/hg38/gencode.v27.annotation.gff3.gz
+    gencode.v24: /DATA/usr/c.leemans/data/tracks/hg38/gencode.v24.annotation.gff3.gz
+
+
+tissue_expression:
+    /DATA/usr/c.leemans/data/tracks/hg38/hg38_fair+new_CAGE_peaks_phase1and2_counts.osc.txt.gz
+
+transcript_selection:
+    fantom:
+        /DATA/usr/c.leemans/data/tracks/hg38/hg38_fair+new_CAGE_peaks_phase1and2.bed.gz
+
+chrom_sizes: /DATA/usr/c.leemans/data/hg38/hg38.chrom.sizes
+
+window:
+    187_120h_r1:
+        signal:
+            "/home/s.manzo/mydata/Projects/Screen/pADamID_NELF_CRISPRi/\
+            SGM200113_NELF/results/counts/-\
+            pA-DamID_187_120h_r1_Lmnb2-gatc.counts.txt.gz"
+        control:
+            "/home/s.manzo/mydata/Projects/Screen/pADamID_NELF_CRISPRi/\
+            SGM200113_NELF/results/counts/bin-gatc/\
+            pA-DamID_187_120h_r1_Dam-gatc.counts.txt.gz"
+    187_120h_r2:
+        signal:
+            "/home/s.manzo/mydata/Projects/Screen/pADamID_NELF_CRISPRi/\
+            SGM200113_NELF/results/counts/bin-gatc/\
+            pA-DamID_187_120h_r2_Lmnb2-gatc.counts.txt.gz"
+        control:
+            "/home/s.manzo/mydata/Projects/Screen/pADamID_NELF_CRISPRi/\
+            SGM200113_NELF/results/counts/bin-gatc/\
+            pA-DamID_187_120h_r2_Dam-gatc.counts.txt.gz"
+    187_144h_r1:
+        signal:
+            "/home/s.manzo/mydata/Projects/Screen/pADamID_NELF_CRISPRi/\
+            SGM200113_NELF/results/counts/bin-gatc/\
+            pA-DamID_187_144h_r1_Lmnb2-gatc.counts.txt.gz"
+        control:
+            "/home/s.manzo/mydata/Projects/Screen/pADamID_NELF_CRISPRi/\
+            SGM200113_NELF/results/counts/bin-gatc/\
+            pA-DamID_187_144h_r1_Dam-gatc.counts.txt.gz"
+    187_144h_r2:
+        signal:
+            "/home/s.manzo/mydata/Projects/Screen/pADamID_NELF_CRISPRi/\
+            SGM200113_NELF/results/counts/bin-gatc/\
+            pA-DamID_187_144h_r2_Lmnb2-gatc.counts.txt.gz"
+        control:
+            "/home/s.manzo/mydata/Projects/Screen/pADamID_NELF_CRISPRi/\
+            SGM200113_NELF/results/counts/bin-gatc/\
+            pA-DamID_187_144h_r2_Dam-gatc.counts.txt.gz"
+    B3_120h_r1:
+        signal:
+            "/home/s.manzo/mydata/Projects/Screen/pADamID_NELF_CRISPRi/\
+            SGM200113_NELF/results/counts/bin-gatc/\
+            pA-DamID_B3_120h_r1_Lmnb2-gatc.counts.txt.gz"
+        control:
+            "/home/s.manzo/mydata/Projects/Screen/pADamID_NELF_CRISPRi/\
+            SGM200113_NELF/results/counts/bin-gatc/\
+            pA-DamID_B3_120h_r1_Dam-gatc.counts.txt.gz"
+    B3_120h_r2:
+        signal:
+            "/home/s.manzo/mydata/Projects/Screen/pADamID_NELF_CRISPRi/\
+            SGM200113_NELF/results/counts/bin-gatc/\
+            pA-DamID_B3_120h_r2_Lmnb2-gatc.counts.txt.gz"
+        control:
+            "/home/s.manzo/mydata/Projects/Screen/pADamID_NELF_CRISPRi/\
+            SGM200113_NELF/results/counts/bin-gatc/\
+            pA-DamID_B3_120h_r2_Dam-gatc.counts.txt.gz"
+    B3_144h_r1:
+        signal:
+            "/home/s.manzo/mydata/Projects/Screen/pADamID_NELF_CRISPRi/\
+            SGM200113_NELF/results/counts/bin-gatc/\
+            pA-DamID_B3_144h_r1_Lmnb2-gatc.counts.txt.gz"
+        control:
+            "/home/s.manzo/mydata/Projects/Screen/pADamID_NELF_CRISPRi/\
+            SGM200113_NELF/results/counts/bin-gatc/\
+            pA-DamID_B3_144h_r1_Dam-gatc.counts.txt.gz"
+    B3_144h_r2:
+        signal:
+            "/home/s.manzo/mydata/Projects/Screen/pADamID_NELF_CRISPRi/\
+            SGM200113_NELF/results/counts/bin-gatc/\
+            pA-DamID_B3_144h_r2_Lmnb2-gatc.counts.txt.gz"
+        control:
+            "/home/s.manzo/mydata/Projects/Screen/pADamID_NELF_CRISPRi/\
+            SGM200113_NELF/results/counts/bin-gatc/\
+            pA-DamID_B3_144h_r2_Dam-gatc.counts.txt.gz"
+    E1_120h_r1:
+        signal:
+            "/home/s.manzo/mydata/Projects/Screen/pADamID_NELF_CRISPRi/\
+            SGM200113_NELF/results/counts/bin-gatc/\
+            pA-DamID_E1_120h_r1_Lmnb2-gatc.counts.txt.gz"
+        control:
+            "/home/s.manzo/mydata/Projects/Screen/pADamID_NELF_CRISPRi/\
+            SGM200113_NELF/results/counts/bin-gatc/\
+            pA-DamID_E1_120h_r1_Dam-gatc.counts.txt.gz"
+    E1_120h_r2:
+        signal:
+            "/home/s.manzo/mydata/Projects/Screen/pADamID_NELF_CRISPRi/\
+            SGM200113_NELF/results/counts/bin-gatc/\
+            pA-DamID_E1_120h_r2_Lmnb2-gatc.counts.txt.gz"
+        control:
+            "/home/s.manzo/mydata/Projects/Screen/pADamID_NELF_CRISPRi/\
+            SGM200113_NELF/results/counts/bin-gatc/\
+            pA-DamID_E1_120h_r2_Dam-gatc.counts.txt.gz"
+    E1_144h_r1:
+        signal:
+            "/home/s.manzo/mydata/Projects/Screen/pADamID_NELF_CRISPRi/\
+            SGM200113_NELF/results/counts/bin-gatc/\
+            pA-DamID_E1_144h_r1_Lmnb2-gatc.counts.txt.gz"
+        control:
+            "/home/s.manzo/mydata/Projects/Screen/pADamID_NELF_CRISPRi/\
+            SGM200113_NELF/results/counts/bin-gatc/\
+            pA-DamID_E1_144h_r1_Dam-gatc.counts.txt.gz"
+    E1_144h_r2:
+        signal:
+            "/home/s.manzo/mydata/Projects/Screen/pADamID_NELF_CRISPRi/\
+            SGM200113_NELF/results/counts/bin-gatc/\
+            pA-DamID_E1_144h_r2_Lmnb2-gatc.counts.txt.gz"
+        control:
+            "/home/s.manzo/mydata/Projects/Screen/pADamID_NELF_CRISPRi/\
+            SGM200113_NELF/results/counts/bin-gatc/\
+            pA-DamID_E1_144h_r2_Dam-gatc.counts.txt.gz"
+
+statistics: /home/s.manzo/mydata/Projects/Screen/pADamID_NELF_CRISPRi/SGM200113_NELF/results/statistics/pipeline.statistics.txt
+
+missingDataAsZero:
+    187_120h_r1: False
+    187_120h_r2: False
+    187_144h_r1: False
+    187_144h_r2: False
+    B3_120h_r1: False
+    B3_120h_r2: False
+    B3_144h_r1: False
+    B3_144h_r2: False
+    E1_120h_r1: False
+    E1_120h_r2: False
+    E1_144h_r1: False
+    E1_144h_r2: False
+
+scaled_param:
+    a: 11000
+    b: 11000
+    unscaled3: 5000
+    unscaled5: 5000
+    body_length: 11000
+    bs: 100
+
+window_param:
+    a:  22000
+    b:  22000
+    bs: 100

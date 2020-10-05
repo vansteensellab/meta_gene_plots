@@ -1,0 +1,172 @@
+---
+title: "Meta plots of DamID on DRB gain/loss and TOP1 gain/loss"
+author: "Christ Leemans"
+date: "`r format(Sys.time(), '%Y-%m-%d')`"
+output:
+    html_document:
+        theme: journal #cerulean
+        highlight: monochrome
+        toc: true
+        toc_float: true
+        code_folding: show
+    pdf_document:
+        fig_width: 8
+        fig_height: 5
+editor_options:
+    chunk_output_type: console
+---
+# knitr document van Steensel lab
+
+## generated on {date}
+
+In this report I would like to make some nice meta plots for Stephano.
+He has discovered regions with opposing effects of TOP1 and DRB treatments.
+For these regions I ran a pipeline binning and averaging pA-DamID.
+
+
+
+### plots on TSS.
+
+I used deeptools to calculate the DamID signal 40kb downstream and 20kb upstream of the TSS. I used 200bp bins and 20 bin smooth.
+
+```{r}
+library(data.table)
+library(stringr)
+library(scales)
+library(ggplot2)
+
+file_list = list.files('cl20200811_TSS_window_TOP_DRB/window_runmean',
+                       pattern='gencode.v24.*100000-100000-1000', full.names=T)
+meta.dt = data.table(str_match(file_list, '.*/(.*?)-(.*)_(.*?)-.*'))
+
+colnames(meta.dt) = c('file', 'region', 'name', 'target')
+
+meta.dt[,rep:=gsub('.*_(.*)', '\\1', name)]
+meta.dt[,condition:=gsub('(.*)_.*', '\\1', name)]
+meta.dt[,condition:=gsub('_1[0-9]+_', '_', condition)]
+meta.dt[,condition:=gsub('_GFP_', '_', condition)]
+
+meta.dt[name=='RPE1', c('rep', 'target', 'name', 'condition') :=
+                      list(gsub('replicate', 'r', target),
+                           'supercoiling', 'supercoiling',
+                           'WT')]
+
+
+setkey(meta.dt, 'file')
+binned.dt = meta.dt[condition%in%c('RPE_CT', 'RPE_DRB-3h', 'RPE_TPL-3h') &
+                    rep %in% c('r2', 'r3') & target=='Lmnb2',
+                    fread(file, stringsAsFactors=F, header=T), by=file]
+
+binned_meta = merge(binned.dt, meta.dt)
+setkey(binned_meta, 'transcript_ID')
+
+
+delta_genes = data.table(readRDS('/DATA/usr/s.manzo/Projects/Christ/genes_Delta_LB2_genes_All.rds'))
+
+transcript_id = fread('cl20200811_TSS_window_TOP_DRB/selection/gencode.v24-fantom-selection.txt',
+                      col.names=c('seqnames', 'tss', 'transcript_ID', 'strand',
+                                  'gene_id', 'avg', 'tissue_count'),
+                      key='transcript_ID')
+
+binned_meta_id = merge(transcript_id[,c('transcript_ID','gene_id')], binned_meta)
+
+binned_delta = merge(binned_meta_id, delta_genes, by='gene_id')
+
+pos_columns = colnames(binned.dt[, -c('file', 'transcript_ID')])
+
+
+region_list = lapply(c('D_DRB3h', 'D_TPL3h'), function(exp){
+    reg_list = lapply(c(-0.3, -0.2, 0.2, 0.3), function(delta){
+        if (delta < 0){
+            selection = paste(exp, '<', delta)
+        } else {
+            selection = paste(exp, '>', delta)
+        }
+        dt = binned_delta[eval(parse(text=paste(selection))) &
+                          size < 100000,
+                                list(pos = as.numeric(colnames(.SD)),
+                                     log2_mean = colMeans(log2(.SD), na.rm=T),
+                                     region = paste(exp, delta, sep='_')),
+                                by=c('file', 'condition', 'target'),
+                                .SDcols=pos_columns]
+        return(dt)
+    })
+    dt = do.call(rbind, reg_list)
+    return(dt)
+})
+region_dt = do.call(rbind, region_list)
+
+mean_rep.dt = region_dt[, list(log2_mean=mean(log2_mean, na.rm=T)),
+                        by=c('region', 'target', 'condition', 'pos') ]
+
+
+setkeyv(mean_rep.dt, c('region', 'target'))
+
+
+plot_list = apply(unique(mean_rep.dt[,c('region', 'target')]),
+                  1, function(x){
+                      print(as.list(x))
+                      dt = mean_rep.dt[as.list(x), ]
+                      ggplot(dt, aes(x=pos, y=log2_mean, color=condition)) +
+                          geom_line() +
+                          ggtitle(paste(x, collapse=' :: ')) +
+                          theme_bw()
+                  })
+pdf('cl20200819_TSS_profiles_DRB_TPL.pdf', useDingbats=F)
+for (plot in plot_list){
+    print(plot)
+}
+dev.off()
+
+
+```
+
+
+
+```{r}
+
+region_list = lapply(c('D_DRB3h', 'D_TPL3h'), function(exp){
+    reg_list = lapply(c(-0.3, -0.2, 0.2, 0.3), function(delta){
+        if (delta < 0){
+            selection = paste(exp, '<', delta)
+        } else {
+            selection = paste(exp, '>', delta)
+        }
+        dt = binned_delta[eval(parse(text=paste(selection))) &
+                          (CT_All > 1 | DRB_All > 1) &
+                          size < 100000,
+                                list(pos = as.numeric(colnames(.SD)),
+                                     log2_mean = colMeans(log2(.SD), na.rm=T),
+                                     region = paste(exp, delta, sep='_')),
+                                by=c('file', 'condition', 'target'),
+                                .SDcols=pos_columns]
+        return(dt)
+    })
+    dt = do.call(rbind, reg_list)
+    return(dt)
+})
+region_dt = do.call(rbind, region_list)
+
+mean_rep.dt = region_dt[, list(log2_mean=mean(log2_mean, na.rm=T)),
+                        by=c('region', 'target', 'condition', 'pos') ]
+
+
+setkeyv(mean_rep.dt, c('region', 'target'))
+
+
+plot_list = apply(unique(mean_rep.dt[,c('region', 'target')]),
+                  1, function(x){
+                      print(as.list(x))
+                      dt = mean_rep.dt[as.list(x), ]
+                      ggplot(dt, aes(x=pos, y=log2_mean, color=condition)) +
+                          geom_line() +
+                          ggtitle(paste(x, collapse=' :: ')) +
+                          theme_bw()
+                  })
+pdf('cl20200819_TSS_profiles_DRB_TPL_LAD.pdf', useDingbats=F)
+for (plot in plot_list){
+    print(plot)
+}
+dev.off()
+
+```

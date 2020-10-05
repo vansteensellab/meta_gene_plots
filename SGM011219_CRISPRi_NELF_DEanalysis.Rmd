@@ -1,0 +1,778 @@
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library("biomaRt")
+# library("annotables")
+library("DESeq2")
+library("pheatmap")
+library("tibble")
+library("dplyr")
+library("ggplot2")
+library("rtracklayer")
+library("ggpubr")
+# library("infer")
+library("ggbeeswarm")
+library("grid")
+library(data.table)
+# library("VennDiagram")
+```
+
+
+
+
+Setting directory and loading row readcount
+```{r cars}
+getwd()
+
+Read_Counts_CRISPri_NELF<-read.delim("/DATA/usr/s.manzo/Projects/Screen/RNA-seq/5732/results/Star/count_table.tsv")
+
+```
+
+
+creating metadata
+```{r pressure, echo=FALSE}
+
+#creating metadata
+genotype<- c("pLB187", "pLB187","pLB187","NELFE", "NELFE","NELFE","NELFB","NELFB","NELFB")
+condition<- c("control", "control", "control","NELFEkd", "NELFEkd", "NELFEkd","NELFBkd", "NELFBkd", "NELFBkd")
+
+CRISPRI_NELF_metadata <-data.frame(genotype, condition)
+
+rownames(CRISPRI_NELF_metadata) <- c("CRISPrI_pLB187_BR1_UnknownStranded_SE", "CRISPrI_pLB187_BR2_UnknownStranded_SE",
+                                     "CRISPrI_pLB187_BR3_UnknownStranded_SE", "CRISPrI_NELFE_BR1_UnknownStranded_SE",
+                                     "CRISPrI_NELFE_BR2_UnknownStranded_SE", "CRISPrI_NELFE_BR3_UnknownStranded_SE",
+                                     "CRISPrI_NELFB_BR1_UnknownStranded_SE", "CRISPrI_NELFB_BR2_UnknownStranded_SE",
+                                     "CRISPrI_NELFB_BR3_UnknownStranded_SE")
+
+rownames(CRISPRI_NELF_metadata)
+#removing column with ensemble ID to get match between columns/raws in metadata
+Read_Counts_CRISPri_NELF_nosample_id<-(Read_Counts_CRISPri_NELF[,-1])
+Ensemblesample_id<- Read_Counts_CRISPri_NELF[,1]
+Ensemblesample_id<-as.character(Ensemblesample_id)
+#same number of elements in the metadata?
+all(rownames(CRISPRI_NELF_metadata) == colnames(Read_Counts_CRISPri_NELF_nosample_id))
+match(rownames(CRISPRI_NELF_metadata), colnames(Read_Counts_CRISPri_NELF_nosample_id))
+
+```
+Let'use DESEq now
+```{r}
+# Create DESeq object
+dds_CRISPrI <- DESeqDataSetFromMatrix(countData = Read_Counts_CRISPri_NELF_nosample_id,
+                                 colData = CRISPRI_NELF_metadata,
+                                 design = ~ condition)
+#Normalized counts
+dds_CRISPrI <- estimateSizeFactors(dds_CRISPrI)
+sizeFactors(dds_CRISPrI)
+
+normalized_CRISPrI_counts <- counts(dds_CRISPrI, normalized=TRUE)
+
+
+
+```
+```{r}
+ #Aggragate analysis
+ #Heatmap
+vsd_CRISPrI <- vst(dds_CRISPrI, blind=TRUE)
+vsd_mat_CRISPrI <- assay(vsd_CRISPrI)
+vsd_cor_CRISPrI<- cor(vsd_mat_CRISPrI)
+view(vsd_cor_CRISPrI)
+
+CRISPRI_NELF_metadata_Selection<-CRISPRI_NELF_metadata %>% dplyr::select(condition)
+pheatmap(vsd_cor_CRISPrI, annotation = CRISPRI_NELF_metadata_Selection, cellwidth=50, cellheight=10)
+
+```
+One of the replicate for the NELFB cluster more with Control than the other two NELFB replecates
+Let's try with PCA
+```{r}
+#PCA
+plotPCA(vsd_CRISPrI, intgroup="condition")
+
+```
+NELFB_3rd experiment will probably need to be removed
+LEt's try without it
+```{r}
+#creating metadata
+genotype<- c("pLB187", "pLB187","pLB187","NELFE", "NELFE","NELFE","NELFB","NELFB")
+condition<- c("control", "control", "control","NELFEkd", "NELFEkd", "NELFEkd","NELFBkd", "NELFBkd")
+
+CRISPRI_NELF_metadata <-data.frame(genotype, condition)
+
+rownames(CRISPRI_NELF_metadata) <- c("CRISPrI_pLB187_BR1_UnknownStranded_SE", "CRISPrI_pLB187_BR2_UnknownStranded_SE",
+                                     "CRISPrI_pLB187_BR3_UnknownStranded_SE", "CRISPrI_NELFE_BR1_UnknownStranded_SE",
+                                     "CRISPrI_NELFE_BR2_UnknownStranded_SE", "CRISPrI_NELFE_BR3_UnknownStranded_SE",
+                                     "CRISPrI_NELFB_BR1_UnknownStranded_SE", "CRISPrI_NELFB_BR2_UnknownStranded_SE")
+
+
+rownames(CRISPRI_NELF_metadata)
+Read_Counts_CRISPri_NELF_nosample_idand9column<-Read_Counts_CRISPri_NELF[,-c(1,10)]
+ensgene<- Read_Counts_CRISPri_NELF[,1]
+
+all(rownames(CRISPRI_NELF_metadata) == colnames(Read_Counts_CRISPri_NELF_nosample_idand9column))
+match(rownames(CRISPRI_NELF_metadata), colnames(Read_Counts_CRISPri_NELF_nosample_idand9column))
+
+# Create DESeq object
+dds_CRISPrI <- DESeqDataSetFromMatrix(countData = Read_Counts_CRISPri_NELF_nosample_idand9column,
+                                      colData = CRISPRI_NELF_metadata,
+                                      design = ~ condition)
+
+#Normalized counts
+dds_CRISPrI <- estimateSizeFactors(dds_CRISPrI)
+sizeFactors(dds_CRISPrI)
+
+normalized_CRISPrI_counts <- counts(dds_CRISPrI, normalized=TRUE)
+
+view(normalized_CRISPrI_counts)
+
+#Aggragate analysis
+#Heatmap
+vsd_CRISPrI <- vst(dds_CRISPrI, blind=TRUE)
+vsd_mat_CRISPrI <- assay(vsd_CRISPrI)
+vsd_cor_CRISPrI<- cor(vsd_mat_CRISPrI)
+view(vsd_cor_CRISPrI)
+
+CRISPRI_NELF_metadata_Selection<-CRISPRI_NELF_metadata %>% dplyr::select(condition)
+pheatmap(vsd_cor_CRISPrI, annotation = CRISPRI_NELF_metadata_Selection, cellwidth=50, cellheight=10)
+
+```
+PCA again
+```{r}
+#PCA
+plotPCA(vsd_CRISPrI, intgroup="condition")
+
+```
+LEt's continue without 3rd experiments fr NELFB
+```{r}
+#DEseq analysis
+dds_CRISPrI <- DESeq(dds_CRISPrI )
+
+#mean s Variance Control
+mean_counts_Control <- apply(Read_Counts_CRISPri_NELF_nosample_idand9column[, 1:3], 1, mean)
+variance_counts_Control <- apply(Read_Counts_CRISPri_NELF_nosample_idand9column[, 1:3], 1, var)
+
+df_Control <- data.frame(mean_counts_Control, variance_counts_Control)
+
+ggplot(df_Control) +
+  geom_point(aes(x=mean_counts_Control, y=variance_counts_Control)) +
+  scale_y_log10() +
+  scale_x_log10() +
+  xlab("Mean counts per gene") +
+  ylab("Variance per gene")
+```
+Looks like tutorial. Variance increase with mean counts
+
+Now for NELFE
+```{r}
+#mean s Variance NELFE
+mean_counts_NELFE <- apply(Read_Counts_CRISPri_NELF_nosample_idand9column[, 4:6], 1, mean)
+variance_counts_NELFE <- apply(Read_Counts_CRISPri_NELF_nosample_idand9column[, 4:6], 1, var)
+
+df_NELFE <- data.frame(mean_counts_NELFE, variance_counts_NELFE)
+
+ggplot(df_NELFE) +
+  geom_point(aes(x=mean_counts_NELFE, y=variance_counts_NELFE)) +
+  scale_y_log10() +
+  scale_x_log10() +
+  xlab("Mean counts per gene") +
+  ylab("Variance per gene")
+
+```
+and NELFB
+```{r}
+#mean vs Variance NELFB
+mean_counts_NELFB <- apply(Read_Counts_CRISPri_NELF_nosample_idand9column[, 7:8], 1, mean)
+variance_counts_NELFB <- apply(Read_Counts_CRISPri_NELF_nosample_idand9column[, 7:8], 1, var)
+
+df_NELFB <- data.frame(mean_counts_NELFB, variance_counts_NELFB)
+
+ggplot(df_NELFB) +
+  geom_point(aes(x=mean_counts_NELFB, y=variance_counts_NELFB)) +
+  scale_y_log10() +
+  scale_x_log10() +
+  xlab("Mean counts per gene") +
+  ylab("Variance per gene")
+
+```
+Slightly different from previous. Could be explained with only two replicates rather than three?
+
+```{r}
+#Calculating dispersion
+plotDispEsts(dds_CRISPrI)
+#+xlab("Mean of normalized counts")+ylab=("Dispersion"))
+
+```
+
+Looks like should be: dispersion decrease with increased mean of normalized counts
+
+```{r}
+#Calling significant DE genes: Control vs NELFE
+NELFE_res_NOCUTOFF <- results(dds_CRISPrI,
+                  contrast = c("condition", "NELFEkd",
+                               "control"),
+                  alpha = 0.05)
+#MA_Plot
+plotMA(NELFE_res_NOCUTOFF, ylim=c(-8,8))
+```
+
+Few genes seem to really change in expression
+Now for NELF B
+
+```{r}
+NELFB_res_NOCUTOFF <- results(dds_CRISPrI,
+                     contrast = c("condition", "NELFBkd",
+                                  "control"),
+                     alpha = 0.05)
+plotMA(NELFB_res_NOCUTOFF, ylim=c(-8,8))
+```
+It seems that NELFB knockdown has a slightly stronger effect than NELFE kd
+
+Now I will try to apply shrinkage to these data. This operation should minimize variation in genes with low count. This usually lead to same number of DE genes, but with lower log2FG
+
+```{r}
+NELFE_res_shrinkage_NOCUTOFF <- lfcShrink(dds_CRISPrI,
+                    contrast=c("condition", "NELFEkd", "control"),
+                    res=NELFE_res_NOCUTOFF)
+
+plotMA(NELFE_res_shrinkage_NOCUTOFF, ylim=c(-5,5))
+```
+Now for NELFB
+
+```{r}
+NELFB_res_shrinkage_NOCUTOFF <- lfcShrink(dds_CRISPrI,
+                       contrast=c("condition", "NELFBkd", "control"),
+                       res=NELFB_res_NOCUTOFF)
+
+plotMA(NELFB_res_shrinkage_NOCUTOFF, ylim=c(-6,6))
+```
+Let'summarize results
+```{r}
+#DEseq results
+mcols(NELFE_res_NOCUTOFF)
+mcols(NELFB_res_NOCUTOFF)
+mcols(NELFE_res_shrinkage_NOCUTOFF)
+mcols(NELFB_res_shrinkage_NOCUTOFF)
+
+head(NELFE_res_shrinkage_NOCUTOFF, n=10)
+head(NELFB_res_shrinkage_NOCUTOFF, n=10)
+
+summary(NELFE_res_shrinkage_NOCUTOFF)
+summary(NELFB_res_shrinkage_NOCUTOFF)
+```
+NELFE: 1440 genes upregulated and 1349 downregulated
+NELFB: 1692 upregulated and 1732 downregulated.
+These genes are called differentially expresse only for p value <0,05. No cut off on Log2FG is included
+Let's try to apply a cut-off of 0.32 (1.5X)
+
+```{r}
+#applying LFC threshold
+NELFE_res <- results(dds_CRISPrI,
+                     contrast = c("condition", "NELFEkd",
+                                  "control"),
+                     alpha = 0.05,lfcThreshold = 0.32)
+plotMA(NELFE_res, ylim=c(-8,8))
+```
+We get way less UP/down genes
+
+Same for NELFB?
+```{r}
+NELFB_res <- results(dds_CRISPrI,
+                     contrast = c("condition", "NELFBkd",
+                                  "control"),
+                     alpha = 0.05, lfcThreshold = 0.32,)
+plotMA(NELFB_res, ylim=c(-8,8))
+```
+Yes
+Now with shrinkage
+```{r}
+NELFE_res_shrinkage <- lfcShrink(dds_CRISPrI,
+                                 contrast=c("condition", "NELFEkd", "control"),
+                                 res=NELFE_res)
+
+plotMA(NELFE_res_shrinkage, ylim=c(-5,5))
+```
+```{r}
+NELFB_res_shrinkage <- lfcShrink(dds_CRISPrI,
+                                 contrast=c("condition", "NELFBkd", "control"),
+                                 res=NELFB_res)
+plotMA(NELFB_res_shrinkage, ylim=c(-5,5))
+
+```
+How many genes are now up/down?
+```{r}
+summary(NELFE_res_shrinkage)
+summary(NELFB_res_shrinkage)
+
+```
+Way less
+
+I tried to associate to these data set a gene symbol by converting Ensemble coordinates in Gene Symbols by using 4 different packages:
+library("EnsDb.Hsapiens.v79")
+library("org.Hs.eg.db")
+library("biomaRt")
+library("annotables")
+
+Always failed. I do not know if the issue is that my ensemble coordinates have .## after the code, that probably recall the transcript variant and maybe this messes up with association with gene symbol.
+
+So far I will try to just to embed the charts with ENsembel id
+
+```{r}
+ensemblsIDS<-ensgene
+
+NELFE_res_shrinkage_Ens<-cbind(ensemblsIDS,NELFE_res_shrinkage)
+NELFB_res_shrinkage_Ens<-cbind(ensemblsIDS,NELFB_res_shrinkage)
+NELFE_res_shrinkage_NOCUTOFF_Ens<-cbind(ensemblsIDS,NELFE_res_shrinkage_NOCUTOFF)
+NELFB_res_shrinkage_NOCUTOFF_Ens<-cbind(ensemblsIDS,NELFB_res_shrinkage_NOCUTOFF)
+
+NELFE_res_shrinkage_Ens<-as.data.frame(NELFE_res_shrinkage_Ens)
+NELFB_res_shrinkage_Ens<-as.data.frame(NELFB_res_shrinkage_Ens)
+NELFE_res_shrinkage_NOCUTOFF_Ens<-as.data.frame(NELFE_res_shrinkage_NOCUTOFF_Ens)
+NELFB_res_shrinkage_NOCUTOFF_Ens<-as.data.frame(NELFB_res_shrinkage_NOCUTOFF_Ens)
+
+head(NELFE_res_shrinkage_Ens)
+head(NELFB_res_shrinkage_Ens)
+head(NELFE_res_shrinkage_NOCUTOFF_Ens)
+head(NELFB_res_shrinkage_NOCUTOFF_Ens)
+
+#select significant differentially expressed genes
+NELFE_res_shrinkage_Ens_sig <- subset(NELFE_res_shrinkage_Ens, padj < 0.05)
+NELFB_res_shrinkage_Ens_sig <- subset(NELFB_res_shrinkage_Ens, padj < 0.05)
+NELFE_res_shrinkage_NOCUTOFF_Ens_sig <- subset(NELFE_res_shrinkage_NOCUTOFF_Ens, padj < 0.05)
+NELFB_res_shrinkage_NOCUTOFF_Ens_sig <- subset(NELFB_res_shrinkage_NOCUTOFF_Ens, padj < 0.05)
+
+
+head(NELFE_res_shrinkage_Ens_sig)
+head(NELFB_res_shrinkage_Ens_sig)
+head(NELFE_res_shrinkage_NOCUTOFF_Ens_sig)
+head(NELFB_res_shrinkage_NOCUTOFF_Ens_sig)
+
+
+#ordered them for adjusted p value
+NELFE_res_shrinkage_Ens_sig_Ordered <- NELFE_res_shrinkage_Ens_sig  %>%  
+  arrange(padj)
+NELFB_res_shrinkage_Ens_sig_Ordered <- NELFB_res_shrinkage_Ens_sig  %>%  
+  arrange(padj)
+#without CUTOFF
+NELFE_res_shrinkage_NOCUTOFF_Ens_sig_Ordered <- NELFE_res_shrinkage_NOCUTOFF_Ens_sig  %>%  
+  arrange(padj)
+NELFB_res_shrinkage_NOCUTOFF_Ens_sig_Ordered <- NELFB_res_shrinkage_NOCUTOFF_Ens_sig   %>%  
+  arrange(padj)
+
+head(NELFE_res_shrinkage_Ens_sig_Ordered)
+head(NELFB_res_shrinkage_Ens_sig_Ordered)
+head(NELFE_res_shrinkage_NOCUTOFF_Ens_sig_Ordered)
+head(NELFB_res_shrinkage_NOCUTOFF_Ens_sig_Ordered)
+
+
+```
+Are we seeing something real? Are the calculated reliable values ? Can we see downregulation of the targeted genes NELFE and NELFB?
+
+```{r}
+#check NELFE trasncript
+NELFE_res_shrinkage_Ens_sig %>% dplyr::filter(ensemblsIDS=="ENSG00000204356.11")
+NELFE_res_shrinkage_Ens_sig_Ordered %>% dplyr::filter(ensemblsIDS=="ENSG00000204356.11")
+
+```
+NELFE result strongly downregulated. It's the highest hits in the chart
+What about NELF B?
+```{r}
+NELFB_res_shrinkage_Ens %>% dplyr::filter(ensemblsIDS=="ENSG00000188986.5")
+NELFB_res_shrinkage_Ens_sig_Ordered %>% dplyr::filter(ensemblsIDS=="ENSG00000188986.5")
+```
+Also NELFB is strongly dowregulated. 2nd strongest hit.
+
+How we correlate these data with LADs? Need LB1-DamID data> Also I will use Tom annotation to associate a gene name with a ENSEMBLE.id
+
+```{r}
+#importing Annotation coordinates
+genes <- import("/DATA/usr/t.v.schaik/data/gene_builds/GRCh38/gencode.v24.primary_assembly.annotation.gtf")
+genes <- genes[genes$type == "gene"]
+
+
+# Remove weird genes
+idx <- which(genes$gene_type %in% c("protein_coding", "lincRNA"))
+genes <- genes[idx]
+
+# Load DamID
+damid <- import("/DATA/usr/t.v.schaik/proj/3D_nucleus/results/ts180110_4DN_DataProcessing/results/tracks/normalized/bin-10kb/Hap1_LMNB1-10kb-combined.bw")
+
+# Extend the genes
+extend <- 10000
+
+genes_extend <- genes
+mcols(genes_extend) <- NULL
+start(genes_extend) <- start(genes) - extend
+end(genes_extend) <- end(genes) + extend
+
+# Determine overlap between genes and data track
+ovl <- findOverlaps(genes_extend, damid, type = "any")
+
+genes$damid_score <- NA
+tmp <- tapply(subjectHits(ovl),
+              queryHits(ovl),
+              function(x) mean(as(mcols(damid), "data.frame")[x, "score"]),
+              simplify = TRUE)
+genes$damid_score[unique(queryHits(ovl))] <- tmp
+```
+
+Now I will associate a damID score to evry single gene
+
+```{r}
+#binding DamID score with RNA counts
+DamIdgenes<-genes%>% as_tibble()%>% dplyr::select(gene_id, gene_type, gene_name,damid_score)
+```
+
+
+```{r}
+RawRNAJointDamID<-inner_join(Read_Counts_CRISPri_NELF, DamIdgenes, by = c("sample.id"="gene_id"))
+```
+
+
+```{r}
+RawRNAJointDamID_DE_NELFE<-inner_join(NELFE_res_shrinkage_Ens_sig_Ordered, DamIdgenes, by = c("ensemblsIDS"="gene_id"))
+RawRNAJointDamID_DE_NELFB<-inner_join(NELFB_res_shrinkage_Ens_sig_Ordered, DamIdgenes, by = c("ensemblsIDS"="gene_id"))
+
+RawRNAJointDamID_DE_NELFE_NOCUTOFF<-inner_join(NELFE_res_shrinkage_NOCUTOFF_Ens_sig_Ordered, DamIdgenes, by = c("ensemblsIDS"="gene_id"))
+RawRNAJointDamID_DE_NELFB_NOCUTOFF<-inner_join(NELFB_res_shrinkage_NOCUTOFF_Ens_sig_Ordered, DamIdgenes, by = c("ensemblsIDS"="gene_id"))
+head(RawRNAJointDamID, n=10)
+head(RawRNAJointDamID_DE_NELFE, n=10)
+head(RawRNAJointDamID_DE_NELFB, n=10)
+head(RawRNAJointDamID_DE_NELFE_NOCUTOFF, n=10)
+head(RawRNAJointDamID_DE_NELFB_NOCUTOFF, n=10)
+```
+What is the percentage of genes  upregulated after NELF kd respectively at lamina or interior?Focusing on NELFB. FIRST focusing on LFG cut off genes.
+
+```{r}
+#Filtering for genes at lamina or at interior #decided to set up DamID score CUTOFF at -0.5 as at these values genes still show a weak association with lamina (e.g. half of the gene attached and half  not)
+DE_NELFB_upregulated_NOCUTOFF<-RawRNAJointDamID_DE_NELFB_NOCUTOFF%>% dplyr::filter(log2FoldChange >0)
+DE_NELFB_upregulated_AT_LAMIN_NOCUTOFF<-DE_NELFB_upregulated_NOCUTOFF %>% dplyr::filter(damid_score > -0.5)
+count_(DE_NELFB_upregulated_AT_LAMIN_NOCUTOFF)
+
+DE_NELFB_upregulated_AT_INTERIOR_NOCUTOFF<-DE_NELFB_upregulated_NOCUTOFF %>% dplyr::filter(damid_score < -0.5)
+count_(DE_NELFB_upregulated_AT_INTERIOR_NOCUTOFF)
+
+DE_NELFB_upregulated<-RawRNAJointDamID_DE_NELFB %>% dplyr::filter(log2FoldChange >0)
+DE_NELFB_upregulated_AT_LAMIN<-DE_NELFB_upregulated %>% dplyr::filter(damid_score > -0.5)
+count_(DE_NELFB_upregulated_AT_LAMIN)
+DE_NELFB_upregulated_AT_INTERIOR<-DE_NELFB_upregulated %>% dplyr::filter(damid_score < -0.5)
+count_(DE_NELFB_upregulated_AT_INTERIOR)
+DE_NELFB_upregulated_AT_LAMIN_NOCUTOFF<-DE_NELFB_upregulated_NOCUTOFF %>% dplyr::filter(damid_score > -0.5)
+DE_NELFB_upregulated_AT_INTERIOR_NOCUTOFF<-DE_NELFB_upregulated_NOCUTOFF %>% dplyr::filter(damid_score < -0.5)
+
+DE_NELFB_downregulated<-RawRNAJointDamID_DE_NELFB %>% dplyr::filter(log2FoldChange < -0.5)
+DE_NELFB_downregulated_AT_LAMIN<-DE_NELFB_downregulated %>% dplyr::filter(damid_score > -0.5)
+count_(DE_NELFB_downregulated_AT_LAMIN)
+DE_NELFB_downregulated_AT_INTERIOR<-DE_NELFB_downregulated %>% dplyr::filter(damid_score < -0.5)
+count_(DE_NELFB_downregulated_AT_INTERIOR)
+
+ALL_gene_AT_lamina <- RawRNAJointDamID%>% dplyr::filter(damid_score > -0.5)
+count_(ALL_gene_AT_lamina)
+ALL_gene_AT_INTERIOR <- RawRNAJointDamID%>% dplyr::filter(damid_score < -0.5)
+count_(ALL_gene_AT_INTERIOR)
+
+
+
+
+#what is the percentage of genes?
+NELFB_AtlaminaPercentage <-count_(DE_NELFB_upregulated_AT_LAMIN)/count_(ALL_gene_AT_lamina)*100
+NELFB_AtInteriorPercentage <- count_(DE_NELFB_upregulated_AT_INTERIOR)/count_(ALL_gene_AT_INTERIOR)*100
+
+perc.df <- data.frame("Percentage" = c(NELFB_AtlaminaPercentage[1, ], NELFB_AtInteriorPercentage[1, ]),
+                      "sample" = c("LAD", "iLAD"))
+ggplot(perc.df, aes(sample, Percentage)) + geom_bar(stat = "identity")
+```
+
+These graphs do not show a preferential enrichement for NELF-kd upregulated genes in LADs.
+However we need to consider that a lot of genes show RNA count= 0 and a lot of genes are usually located in LADs.
+Regulation by NELF coul require that a minimal activity of the promoter is required, soit could be wise to remove these 0 count from the list
+
+```{r}
+```
+
+
+```{r}
+#TRYING TO FILTER OUT INACTIVE GENES
+#Averaging count between replicate
+str(RawRNAJointDamID)
+RawRNAJointDamID[2:10] <- lapply(RawRNAJointDamID[2:10], as.numeric)
+str(RawRNAJointDamID)
+Average_RawRNAJointDamID<-RawRNAJointDamID %>% dplyr::mutate(Average_CT= (CRISPrI_pLB187_BR1_UnknownStranded_SE+
+                                                                            CRISPrI_pLB187_BR2_UnknownStranded_SE+
+                                                                            CRISPrI_pLB187_BR3_UnknownStranded_SE)/3)
+
+Average_RawRNAJointDamID_2<-Average_RawRNAJointDamID%>% dplyr::mutate(Average_NELFE= (CRISPrI_NELFE_BR1_UnknownStranded_SE+
+                                                                                        CRISPrI_NELFE_BR2_UnknownStranded_SE+
+                                                                                        CRISPrI_NELFE_BR3_UnknownStranded_SE)/3)
+Average_RawRNAJointDamID_3<-Average_RawRNAJointDamID_2%>% dplyr::mutate(Average_NELFB= (CRISPrI_NELFB_BR1_UnknownStranded_SE+
+                                                                                          CRISPrI_NELFB_BR1_UnknownStranded_SE)/2)
+
+
+```
+
+```{r}
+ALL_GENES_NO_INACTIVE <-Average_RawRNAJointDamID_3 %>% dplyr::filter(Average_CT  >5)
+
+ALL_GENES_NO_INACTIVE_AT_LAMINA<-ALL_GENES_NO_INACTIVE %>% dplyr::filter(damid_score > -0,5)
+ALL_GENES_NO_INACTIVE_AT_INTERIOR<-ALL_GENES_NO_INACTIVE %>% dplyr::filter(damid_score < -0,5)
+count_(ALL_GENES_NO_INACTIVE_AT_LAMINA)
+count_(ALL_GENES_NO_INACTIVE_AT_INTERIOR)
+```
+Now genes at lamina group is strongly reduced
+Let's try to calculate the new Percentages both for LFG >0.32 and for no LFG cut off
+```{r}
+count_(DE_NELFB_upregulated_AT_LAMIN)
+count_(DE_NELFB_upregulated_AT_LAMIN_NOCUTOFF)
+count_(DE_NELFB_upregulated_AT_INTERIOR)
+count_(DE_NELFB_upregulated_AT_INTERIOR_NOCUTOFF)
+nELFB_AtlaminaPercentage <-count_(DE_NELFB_upregulated_AT_LAMIN)/count_(ALL_GENES_NO_INACTIVE_AT_LAMINA)*100
+nELFB_AtInteriorPercentage <- count_(DE_NELFB_upregulated_AT_INTERIOR)/count_(ALL_GENES_NO_INACTIVE_AT_INTERIOR)*100
+
+nELFB_AtlaminaPercentage_NOCUTOFF <-count_(DE_NELFB_upregulated_AT_LAMIN_NOCUTOFF)/count_(ALL_GENES_NO_INACTIVE_AT_LAMINA)*100
+nELFB_AtInteriorPercentage_NOCUTOFF <- count_(DE_NELFB_upregulated_AT_INTERIOR_NOCUTOFF)/count_(ALL_GENES_NO_INACTIVE_AT_INTERIOR)*100
+nELFB_AtlaminaPercentage
+nELFB_AtInteriorPercentage
+nELFB_AtlaminaPercentage_NOCUTOFF
+nELFB_AtInteriorPercentage
+perc.df <- data.frame("Percentage" = c(nELFB_AtlaminaPercentage[1, ], nELFB_AtInteriorPercentage[1, ]),
+                      "sample" = c("LAD", "iLAD"))
+perc.df_NOCUTOFF <- data.frame("Percentage" = c(nELFB_AtlaminaPercentage_NOCUTOFF[1, ], nELFB_AtInteriorPercentage_NOCUTOFF[1, ]),
+                      "sample" = c("LAD", "iLAD"))
+
+ggplot(perc.df, aes(sample, Percentage)) + geom_bar(stat = "identity")
+ggplot(perc.df_NOCUTOFF, aes(sample, Percentage)) + geom_bar(stat = "identity")
+
+
+
+```
+How LFG correlate with damID score?
+```{r}
+#correlation with DamID score
+ggplot(RawRNAJointDamID_DE_NELFB, aes(x=log2FoldChange, y=damid_score)) +geom_point()
+
+#NO CUTOFF
+ggplot(RawRNAJointDamID_DE_NELFB_NOCUTOFF, aes(x=log2FoldChange, y=damid_score)) +geom_point()
+
+#only upregulated
+ggplot(DE_NELFB_upregulated, aes(x=damid_score, y=log2FoldChange)) +geom_point()+stat_cor(method = "pearson", label.x = 1, label.y = -1)
+
+#only upregulated #NO CUTOFF
+
+ggplot(DE_NELFB_upregulated_NOCUTOFF, aes(x=damid_score, y=log2FoldChange)) +geom_point()+stat_cor(method = "pearson", label.x = 1, label.y = -1)
+
+
+```
+```{r}
+```
+
+
+```{r}
+#Using logoBase mean data rather then counts to filter away INACTIVE genes
+ALL_gene_AT_lamina_BaseMean<-inner_join(ALL_gene_AT_lamina, NELFB_res_shrinkage_NOCUTOFF_Ens, by = c("sample.id"="ensemblsIDS"))
+ALL_gene_AT_INTERIOR_BaseMean<-inner_join(ALL_gene_AT_INTERIOR, NELFB_res_shrinkage_NOCUTOFF_Ens, by = c("sample.id"="ensemblsIDS"))
+
+ALL_gene_AT_lamina_BaseMean_NOINACTIVE<-ALL_gene_AT_lamina_BaseMean%>% dplyr::filter (baseMean>5)
+ALL_gene_AT_INTERIOR_BaseMean_NOINACTIVE<- ALL_gene_AT_INTERIOR_BaseMean%>% dplyr::filter (baseMean>5)
+
+ALL_gene_AT_lamina_BaseMean_NOINACTIVE_upregulated <- ALL_gene_AT_lamina_BaseMean_NOINACTIVE%>% dplyr::filter (log2FoldChange> 0, padj < 0.05)
+ALL_gene_AT_INTERIOR_BaseMean_NOINACTIVE_upregulated <- ALL_gene_AT_INTERIOR_BaseMean_NOINACTIVE %>% dplyr::filter (log2FoldChange> 0, padj < 0.05)
+
+
+count_(ALL_gene_AT_lamina_BaseMean_NOINACTIVE)
+count_(ALL_gene_AT_INTERIOR_BaseMean_NOINACTIVE)
+count_(ALL_gene_AT_lamina_BaseMean_NOINACTIVE_upregulated)
+count_(ALL_gene_AT_INTERIOR_BaseMean_NOINACTIVE_upregulated)
+
+```
+```{r}
+#Calculate %
+nELFB_AtlaminaPercentage_logBaseMEan <-count_(ALL_gene_AT_lamina_BaseMean_NOINACTIVE_upregulated)/count_(ALL_gene_AT_lamina_BaseMean_NOINACTIVE)*100
+nELFB_AtInteriorPercentage <- count_(ALL_gene_AT_INTERIOR_BaseMean_NOINACTIVE_upregulated)/count_(ALL_gene_AT_INTERIOR_BaseMean_NOINACTIVE)*100
+
+nELFB_AtlaminaPercentage_logBaseMEan
+nELFB_AtInteriorPercentage
+perc.df_logBaseMEan <- data.frame("Percentage" = c(nELFB_AtlaminaPercentage_logBaseMEan [1, ], nELFB_AtInteriorPercentage[1, ]),
+                      "sample" = c("LAD", "iLAD"))
+
+
+ggplot(perc.df_logBaseMEan, aes(sample, Percentage)) + geom_bar(stat = "identity")
+
+```
+The best comparison should be a matched group of same expression and numeber of the LAD groups but coming for the iLAD group
+I will use  script from Christ to generate that random matche dgropu from iLAD subset
+
+```{r}
+#---- OPTION 1: take equal number of items per bin ------#
+## get a table with matching sets
+## table = complete table to take matching sets from
+## class_col = column name of class of interest
+## class = name of class to match the set on
+## order_on = column name to order on
+## bs = bin size to sample equal number of items from
+matchSet <- function(table, class_col, class, order_on, bs=5){
+  # order by value of interest
+  o_vec = order(table[,order_on])
+  o_table = table[o_vec, ]
+  set_A = which(o_table[,class_col]==class)
+
+  # define bins that cover the range of set A
+  n = length(o_vec)
+  bin_n = ceiling((n - set_A[1] - 1) / bs)
+  seq_vec = seq(n-bin_n*bs, n, bs)
+
+
+  # take a matching set B
+  set_B = c()
+  for(i in 1:(length(seq_vec)-1)){
+    sub_table = o_table[(seq_vec[i] + 1):seq_vec[i + 1], ]
+    sub_A = which(sub_table[,class_col]==class)
+    if (length(sub_A) < bs/2){
+      sub_B = sample(which(sub_table[,class_col]!=class), length(sub_A))
+    } else {
+      sub_B = which(sub_table[,class_col]!=class)
+    }
+    set_B = c(set_B, sub_B + seq_vec[i])
+  }
+  ## can also return o_table[c(setA, setB), ]
+  ## but this way order is perserved.
+  i_vec = o_vec[c(set_A, set_B)]
+  return(table[i_vec[order(i_vec)], ])
+}
+
+
+names(ALL_gene_AT_lamina_BaseMean_NOINACTIVE)
+names(ALL_gene_AT_INTERIOR_BaseMean_NOINACTIVE)
+count_(ALL_gene_AT_lamina_BaseMean_NOINACTIVE)
+ALL_gene_AT_lamina_BaseMean_NOINACTIVE$location <- "LAD"
+ALL_gene_AT_INTERIOR_BaseMean_NOINACTIVE$location <- "iLAD"
+
+ALL_gene_BaseMean_NOINACTIVE <- rbind(ALL_gene_AT_lamina_BaseMean_NOINACTIVE, ALL_gene_AT_INTERIOR_BaseMean_NOINACTIVE)
+tail(ALL_gene_BaseMean_NOINACTIVE )
+
+
+
+ALL_gene_BaseMean_NOINACTIVE%>%  
+  matchSet(., "location", "LAD", "baseMean") %>%
+  ggplot(., aes(location, baseMean, color = padj)) + geom_quasirandom()
+
+Random_SET<-matchSet(ALL_gene_BaseMean_NOINACTIVE, "location", "LAD", "baseMean")
+
+NELFB_upregulated_MATCHED<-Random_SET %>% dplyr::filter(log2FoldChange>0, padj<0.05,location=="iLAD")
+NELFB_upregulated_LADs<-Random_SET %>% dplyr::filter(log2FoldChange>0, padj<0.05,location=="LAD")
+Random_SET %>% dplyr::filter(log2FoldChange>0, padj<0.05) %>% dplyr::select(location) %>% table()
+
+ggplot(Random_SET, aes(location, log(baseMean))) + geom_quasirandom()
+ggplot(Random_SET, aes(location, log2FoldChange)) + geom_boxplot()
+count_(NELFB_upregulated_MATCHED)
+count_(NELFB_upregulated_LADs)
+ALL_gene_BaseMean_NOINACTIVE %>%
+  dplyr::mutate(location = factor(location)) %>%
+  t_test(log2FoldChange ~ location,order = c("iLAD", "LAD"))
+
+
+
+#Calculate %
+nELFB_AtlaminaPercentage_logBaseMEan_MATCHED <-count_(NELFB_upregulated_LADs)/1387*100
+nELFB_AtInteriorPercentage_logBaseMEan_MATCHED <- count_(NELFB_upregulated_MATCHED)/1387*100
+
+nELFB_AtlaminaPercentage_logBaseMEan_MATCHED
+nELFB_AtInteriorPercentage_logBaseMEan_MATCHED
+perc.df_logBaseMEan_MATCHED <- data.frame("Percentage" = c(nELFB_AtlaminaPercentage_logBaseMEan_MATCHED [1, ],nELFB_AtInteriorPercentage_logBaseMEan_MATCHED[1, ]),
+                      "sample" = c("LAD", "iLAD"))
+
+
+ggplot(perc.df_logBaseMEan_MATCHED, aes(sample, Percentage)) + geom_bar(stat = "identity")
+
+
+
+```
+```{r}
+NELFB_NELFE_Common<-inner_join(NELFB_res_shrinkage_NOCUTOFF_Ens_sig, NELFE_res_shrinkage_NOCUTOFF_Ens_sig, by = c("ensemblsIDS"="ensemblsIDS"))
+str(NELFB_NELFE_Common)
+ggplot(NELFB_NELFE_Common, aes(x=log2FoldChange.x, y=log2FoldChange.y)) +geom_point()+stat_cor(method = "pearson", label.x = 1, label.y = -1) + labs(x = "LFG_NELFB", y="LFG_NELFE")
+```
+``
+```{r}
+
+grid.newpage()
+draw.pairwise.venn(area1 = 2789, area2 = 3424, cross.area = 2240, category = c("NELFE_DE",
+                                                                           "NELFB_DE") ,lty = rep("blank", 2), fill = c("light blue", "red"), alpha = rep(0.5, 2), cat.pos = c(0,
+                                                                                                                                                                                 0), cat.dist = rep(0.025, 2))
+
+```
+
+80% overlap for NELFE and 65% overlap for NELFB
+
+
+
+```{r}
+
+
+file_list = list.files('/DATA/usr/c.leemans/projects/meta_gene_plots/results/runmean/',
+                       pattern='gencode.v24', full.names=T)
+
+file.dt = data.table(str_match(file_list, '.*/gencode.v24-(.*)_(.*)_(.*).txt'))
+
+colnames(file.dt) = c('file', 'exp', 'time', 'rep')
+
+dam.dt = file.dt[, fread(file, key='transcript_ID'), by=c('exp', 'time', 'rep')]
+
+
+global_expr = fread('/DATA/usr/c.leemans/projects/meta_gene_plots/results/selection/gencode.v24-fantom-selection.txt',
+                    col.names=c('seqnames', 'TSS', 'transcript_ID', 'ori', 'gene_ID', 'avg_expr', 'nr_expr'),
+                    key='transcript_ID')
+
+df1 = data.table('gene_ID'=ALL_gene_AT_INTERIOR_BaseMean_NOINACTIVE$sample.id,
+                 'lamin_association'='Interior',
+                 'expression'='unchanged')
+
+df1[gene_ID %in% ALL_gene_AT_INTERIOR_BaseMean_NOINACTIVE_upregulated$sample.id,
+    expression:='upregulated']
+df2 = data.table('gene_ID'=ALL_gene_AT_lamina_BaseMean_NOINACTIVE$sample.id,
+                 'lamin_association'='Lamina',
+                 'expression'='unchanged')
+df2[gene_ID %in% ALL_gene_AT_lamina_BaseMean_NOINACTIVE_upregulated$sample.id,
+    expression:='upregulated']
+
+class_df = rbind(df1, df2)
+
+
+top_expr = global_expr[,.SD[which.max(avg_expr),],by='gene_ID']
+
+
+dam_gene_id.dt = merge(dam.dt, top_expr[,c('transcript_ID', 'gene_ID')],
+                       by='transcript_ID')
+
+
+merge_dt = merge(class_df, dam_gene_id.dt[,-c('transcript_ID')], by='gene_ID')
+
+level_vec = colnames(dam_gene_id.dt[,-c('transcript_ID', 'gene_ID', 'exp',
+                                        'time', 'rep')])
+
+
+mean_dt = merge_dt[, lapply(.SD[,-c('gene_ID')], function(x){mean(log2(x))}),
+                   by=c('lamin_association', 'expression', 'exp', 'time', 'rep')]
+
+mean_melt = melt(mean_dt, measure.vars=level_vec, variable.name='pos', value.name='mean_log2')
+
+mean_melt[, pos := factor(pos, levels=level_vec)]
+mean_melt[, x:= as.numeric(pos)]
+
+pdf('test.pdf', width=20, useDingbats=F)
+
+plot_list = apply(file.dt, 1, function(x){
+    e = x['exp']
+    t = x['time']
+    r = x['rep']
+    dt = mean_melt[exp==e & time == t & rep == r, ]
+    ggplot(dt, aes(x=pos, y=mean_log2, color=paste(expression, lamin_association))) +
+        ggtitle(paste(e,t,r)) +
+        geom_point() +
+        theme_bw() +
+        theme(axis.text.x = element_text(angle=90, hjust =0.5)) +
+        geom_line(aes(x=x))
+})
+for (p in plot_list){
+    print(p)
+}
+
+dev.off()
+```

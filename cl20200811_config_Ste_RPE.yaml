@@ -1,0 +1,61 @@
+outdir: '/DATA/usr/c.leemans/projects/meta_gene_plots/cl20200811_TSS_window_TOP_DRB'
+
+META: '/DATA/usr/c.leemans/projects/meta_gene_plots/dam_files_TOP_DRB.txt'
+
+transcripts:
+    gencode.v27: /DATA/usr/c.leemans/data/tracks/hg38/gencode.v27.annotation.gff3.gz
+    gencode.v24: /DATA/usr/c.leemans/data/tracks/hg38/gencode.v24.annotation.gff3.gz
+
+
+tissue_expression:
+    /DATA/usr/c.leemans/data/tracks/hg38/hg38_fair+new_CAGE_peaks_phase1and2_counts.osc.txt.gz
+
+transcript_selection:
+    fantom:
+        /DATA/usr/c.leemans/data/tracks/hg38/hg38_fair+new_CAGE_peaks_phase1and2.bed.gz
+
+chrom_sizes: /DATA/data/human/hg38/genome/chromSizes_hg38_LP180129.txt
+
+window:
+    other:
+        RPE1_replicate1:
+            signal:
+                "/DATA/usr/c.leemans/projects/Gilbert_supercoiling/1kb/RPE1_replicate1_WT_24h_hg38_count.bw"
+            control:
+                "/DATA/usr/c.leemans/projects/Gilbert_supercoiling/1kb/RPE1_genomic_control_WT_24h_hg38_count.bw"
+        RPE1_replicate2:
+            signal:
+                "/DATA/usr/c.leemans/projects/Gilbert_supercoiling/1kb/RPE1_replicate2_WT_24h_hg38_count.bw"
+            control:
+                "/DATA/usr/c.leemans/projects/Gilbert_supercoiling/1kb/RPE1_genomic_control_WT_24h_hg38_count.bw"
+
+name:
+    RPE1_replicate1:
+        signal:
+            "RPE1_replicate1_WT"
+        control:
+            "RPE1_genomic_control_WT"
+    RPE1_replicate2:
+        signal:
+            "RPE1_replicate2_WT"
+        control:
+            "RPE1_genomic_control_WT"
+
+statistics:
+    dam: "/DATA/usr/t.v.schaik/proj/sManzo_pADamID/\
+          ts190515_pADamID_RPE_Top1_DRB/results/statistics/\
+          pipeline.statistics.txt"
+    other: "/DATA/usr/c.leemans/projects/Gilbert_supercoiling/1kb/RPE1_total_counts.txt"
+
+
+missingDataAsZero:
+    RPE1_replicate1: False
+    RPE1_replicate2: False
+
+
+window_param:
+    a:  100000
+    b:  100000
+    bs: 1000
+
+smooth_k: 10

@@ -1,0 +1,17 @@
+outdir: '/DATA/usr/c.leemans/projects/meta_gene_plots/cl20200811_TSS_M25_exp'
+
+
+transcripts:
+    gencode.M25:
+        /DATA/usr/c.leemans/data/tracks/mm10/gencode.vM25.annotation.gff3
+
+
+tissue_expression:
+    /DATA/usr/c.leemans/data/tracks/mm10/mm10_fair+new_CAGE_peaks_phase1and2_counts.osc.txt.gz
+
+transcript_selection:
+    fantom:
+        /DATA/usr/c.leemans/data/tracks/mm10/mm10_fair+new_CAGE_peaks_phase1and2.bed.gz
+
+
+chrom_sizes: /DATA/usr/c.leemans/data/mm10/mm10.chrom.sizes
